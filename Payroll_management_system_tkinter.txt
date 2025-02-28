@@ -1,0 +1,626 @@
+import tkinter as tk
+from tkinter import ttk
+from tkinter import Label, Entry, Button, Spinbox
+from tkinter import messagebox, Toplevel
+from tkinter.font import Font
+from PIL import Image, ImageTk
+import mysql.connector
+from mysql.connector import Error
+
+def connect_db():
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="",
+        database="payroll_management"
+    )
+
+root = tk.Tk()
+root.title("Payroll System")
+root.geometry("900x700")
+root.resizable(False, False)
+image_path = r"C:\Users\BeastHari\Desktop\Python\ProjectLesson\payroll_bg.jpg"
+image = Image.open(image_path)
+bg_image = ImageTk.PhotoImage(image)
+
+font_1 = Font(family="times", size=14, weight="bold")
+font_2 = Font(family="times", size=25, weight="bold")
+font_3 = Font(family="times", size=18)
+
+def main():
+
+    main_frame =ttk.Frame(root)
+    main_frame.pack(fill="both", expand=True)
+
+    bg_label = Label(main_frame, image=bg_image)
+    bg_label.place(relheight=1, relwidth=1)
+
+    def emp_entry():
+        main_frame.destroy()
+        Employee_Entry()
+
+    def emp_details():
+        main_frame.destroy()
+        Emp_details()
+
+    def emp_update_call():
+        main_frame.destroy()
+        emp_update()
+
+    def fetch_employee_details(emp_number):
+
+        try:
+            conn = connect_db()
+            cursor = conn.cursor()
+
+            cursor.execute("SELECT * FROM employee_file WHERE number = %s", (emp_number,))
+            employee = cursor.fetchone()
+
+            conn.close()
+            return employee
+
+        except Error as e:
+            print(f"Database error: {e}")
+            return None
+
+    def search_employee():
+
+        Emp = Toplevel(root)
+        Emp.geometry("400x350")
+        Emp.config(bg="lightblue")
+        Emp.title("Employee Details")
+
+        emp_number = search_emp.get()
+
+        employee = fetch_employee_details(emp_number)
+
+        if employee:
+            labnew = Label(Emp, text="Employee Details", font=("times", 15, "bold"), fg="white", bg="#2c3e80", padx=10,pady=10)
+            labnew.pack()
+
+            details = (f"Number: {employee[0]}\nName: {employee[1]}\nSex: {employee[2]}\nDOB: {employee[3]}\nDOJ: {employee[4]}\nDesignation: {employee[5]}"
+                       f"\nBasic Salary: {employee[6]}\nPhone: {employee[7]}\nAddress: {employee[8]}")
+
+            lab_details = Label(Emp, text=details, font=("times", 12,"bold"), fg="black", bg="lightblue", padx=10, pady=10)
+            lab_details.pack()
+
+        else:
+
+            messagebox.showerror("Error", "Employee not found!")
+
+        btnnew = Button(Emp, text="Exit", font=("times", 15, "bold"), width=10, padx=0, pady=0, bg="red", fg="white",command=Emp.destroy)
+        btnnew.pack(padx=10, pady=10)
+
+    def delete():
+        dele = Toplevel(root)
+        dele.geometry("200x150")
+        dele.config(bg="black")
+        dele.title("Employee Delete")
+
+        def emp_delete():
+            emp_number = emp_delete_entry.get()
+
+            if not emp_number:
+                messagebox.showwarning("Input Error", "Please enter an Employee Number.")
+                return
+
+            try:
+                conn = connect_db()
+                if conn is None:
+                    raise Exception("Database connection failed.")
+
+                cursor = conn.cursor()
+
+                cursor.execute("DELETE FROM monthly_pay_file WHERE number = %s", (emp_number,))
+                cursor.execute("DELETE FROM employee_file WHERE number = %s", (emp_number,))
+
+                conn.commit()
+
+                if cursor.rowcount > 0:
+                    messagebox.showinfo("Success", f"Employee {emp_number} deleted successfully.")
+                else:
+                    messagebox.showwarning("Not Found", f"No employee found with number {emp_number}.")
+
+                conn.close()
+                dele.destroy()
+
+            except Error as e:
+                messagebox.showerror("Database Error", str(e))
+            except Exception as e:
+                messagebox.showerror("Error", str(e))
+
+        ttk.Label(dele, text="Delete Employee", font=font_3).pack()
+        ttk.Label(dele, text="Employee No:").pack()
+
+        emp_delete_entry = Entry(dele)
+        emp_delete_entry.pack()
+
+        delete_button = ttk.Button(dele, text="Delete", command=emp_delete)
+        delete_button.pack(pady=5)
+
+        exit_button = ttk.Button(dele, text="Exit", command=dele.destroy)
+        exit_button.pack(pady=5)
+
+    ttk.Label(main_frame, text="Payroll Management", background="blue", padding=10, font=font_2).pack()
+
+    ttk.Label(main_frame, text="Employee.No:", font=font_1).pack()
+    search_emp = ttk.Entry(main_frame)
+    search_emp.pack()
+    submit_search = Button(main_frame, text="Search", font=font_1, command=search_employee).pack()
+
+    emp_entry_button = Button(main_frame, text="Entry", font=font_2, command=emp_entry, padx=10, pady=10)
+    emp_entry_button.place(x=230, y=200)
+
+    emp_update_button = Button(main_frame, text="Modify", font=font_2, command=emp_update_call, padx=10, pady=10)
+    emp_update_button.place(x=380, y=200)
+
+    emp_details_button = Button(main_frame, text="Details", font=font_2, command=emp_details, padx=10, pady=10)
+    emp_details_button.place(x=550, y=200)
+
+    emp_delete_button = Button(main_frame, text="Delete", font=font_2, command=delete, padx=10, pady=10)
+    emp_delete_button.place(x=385, y=300)
+
+    emp_details_button = Button(main_frame, text="Exit", font=font_2, command=quit, padx=10, pady=10)
+    emp_details_button.place(x=395, y=500)
+
+    root.mainloop()
+
+def Employee_Entry():
+
+    def submit_form():
+        salary_dict = {
+            "Driver": 30000,
+            "Manager": 60000,
+            "Security": 25000
+        }
+        number = number_entry.get()
+        name = name_entry.get()
+        sex = sex_var.get()
+        dob = f"{DOB_d.get()}/{DOB_m.get()}/{DOB_y.get()}"
+        doj = f"{DOJ_d.get()}/{DOJ_m.get()}/{DOJ_y.get()}"
+        designation = designation_entry.get()
+        basic_salary = salary_dict.get(designation, 0)
+        phone = phone_entry.get()
+        address = address_entry.get("1.0", tk.END)
+
+        conn = connect_db()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "INSERT INTO employee_file (number, name, sex, Dob, Doj, designation, basic_salary, phone, address) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (number, name, sex, dob, doj, designation, basic_salary, phone, address))
+        conn.commit()
+        conn.close()
+        messagebox.showinfo("Success", "Employee added successfully!")
+
+    def clear_form():
+
+        number_entry.delete(0, tk.END)
+        name_entry.delete(0, tk.END)
+        sex_var.set(None)
+        DOB_d.delete(0, tk.END)
+        DOB_m.delete(0, tk.END)
+        DOB_y.delete(0, tk.END)
+        DOJ_d.delete(0, tk.END)
+        DOJ_m.delete(0, tk.END)
+        DOJ_y.delete(0, tk.END)
+        designation_entry.delete(0, tk.END)
+        phone_entry.delete(0, tk.END)
+        address_entry.delete(0, tk.END)
+
+    def back_form():
+
+        form_frame.destroy()
+        main()
+
+    form_frame = ttk.Frame(root, padding="10", style='TFrame')
+    form_frame.pack(fill="both", expand=True)
+
+    style = ttk.Style()
+    style.configure('TFrame', background='blue')
+
+    ttk.Label(form_frame, text="Employee Entry", font=font_2, padding=10, background="black",
+              foreground="white").pack()
+
+    ttk.Label(form_frame, text="Employee Number:", font=font_1, background="blue").pack()
+    number_entry = ttk.Entry(form_frame)
+    number_entry.pack()
+
+    ttk.Label(form_frame, text="Name:", font=font_1, background="blue").pack()
+    name_entry = ttk.Entry(form_frame)
+    name_entry.pack()
+
+    ttk.Label(form_frame, text="Sex:", font=font_1, background="blue").pack()
+    sex_var = tk.StringVar()
+    ttk.Radiobutton(form_frame, text="Male", variable=sex_var, value="Male").pack()
+    ttk.Radiobutton(form_frame, text="Female", variable=sex_var, value="Female").pack()
+
+    ttk.Label(form_frame, text="Date of Birth(dd/mm/yyyy):", font=font_1, background="blue").pack()
+    DOB_d = Spinbox(form_frame, from_=1, to=31, width=2, font=font_1)
+    DOB_d.place(x=380, y=250)
+    DOB_m = Spinbox(form_frame, from_=1, to=12, width=2, font=font_1)
+    DOB_m.pack()
+    DOB_y = Spinbox(form_frame, from_=1980, to=2020, width=5, font=font_1)
+    DOB_y.place(x=462, y=250)
+
+    ttk.Label(form_frame, text="Date of Joining(dd/mm/yyyy):", font=font_1, background="blue").pack()
+    DOJ_d = Spinbox(form_frame, from_=1, to=31, width=2, font=font_1)
+    DOJ_d.place(x=380, y=302)
+    DOJ_m = Spinbox(form_frame, from_=1, to=12, width=2, font=font_1)
+    DOJ_m.pack()
+    DOJ_y = Spinbox(form_frame, from_=1980, to=2020, width=5, font=font_1)
+    DOJ_y.place(x=462, y=302)
+
+    ttk.Label(form_frame, text="Designation:", font=font_1, background="blue").pack()
+    designation_entry = ttk.Combobox(form_frame, width=20, state="readonly")
+    designation_entry["values"] = ("Driver", "Manager", "Security")
+    designation_entry.current(1)
+    designation_entry.pack()
+
+    ttk.Label(form_frame, text="Phone:", font=font_1, background="blue").pack()
+    phone_entry = ttk.Entry(form_frame)
+    phone_entry.pack()
+
+    ttk.Label(form_frame, text="Address:", font=font_1, background="blue").pack()
+    address_entry = tk.Text(form_frame, height=5, width=20)
+    address_entry.pack()
+
+    submit_button = Button(form_frame, text="Submit",command=submit_form,font=font_1)
+    submit_button.pack()
+
+    clear_button = Button(form_frame, text="Clear", command=clear_form,font=font_1)
+    clear_button.pack()
+
+    back_button = Button(form_frame, text="Back", command=back_form, font=font_1)
+    back_button.pack()
+
+    root.mainloop()
+
+
+def emp_update():
+
+    update_frame = ttk.Frame(root,style="TFrame")
+    update_frame.pack(fill="both", expand=1)
+
+    style = ttk.Style()
+    style.configure('TFrame', background='orange')
+
+    ttk.Label(update_frame, text="Employee Update", font=font_2, padding=10, background="black",
+                  foreground="white").pack()
+
+    ttk.Label(update_frame, text="Employee Number:", font=font_1, background="orange").pack()
+    number_entry = ttk.Entry(update_frame)
+    number_entry.pack()
+
+    ttk.Label(update_frame, text="Name:", font=font_1, background="orange").pack()
+    name_entry = ttk.Entry(update_frame)
+    name_entry.pack()
+
+    ttk.Label(update_frame, text="Sex:", font=font_1, background="orange").pack()
+    sex_var = tk.StringVar()
+    ttk.Radiobutton(update_frame, text="Male", variable=sex_var, value="Male").pack()
+    ttk.Radiobutton(update_frame, text="Female", variable=sex_var, value="Female").pack()
+
+    ttk.Label(update_frame, text="Date of Birth(dd/mm/yyyy):", font=font_1, background="orange").pack()
+    DOB_d = Spinbox(update_frame, from_=1, to=31, width=2, font=font_1)
+    DOB_d.place(x=390, y=250)
+    DOB_m = Spinbox(update_frame, from_=1, to=12, width=2, font=font_1)
+    DOB_m.pack()
+    DOB_y = Spinbox(update_frame, from_=1980, to=2020, width=5, font=font_1)
+    DOB_y.place(x=472, y=250)
+
+    ttk.Label(update_frame, text="Date of Joining(dd/mm/yyyy):", font=font_1, background="orange").pack()
+    DOJ_d = Spinbox(update_frame, from_=1, to=31, width=2, font=font_1)
+    DOJ_d.place(x=390, y=302)
+    DOJ_m = Spinbox(update_frame, from_=1, to=12, width=2, font=font_1)
+    DOJ_m.pack()
+    DOJ_y = Spinbox(update_frame, from_=1980, to=2020, width=5, font=font_1)
+    DOJ_y.place(x=472, y=302)
+
+    ttk.Label(update_frame, text="Designation:", font=font_1, background="orange").pack()
+    designation_entry = ttk.Combobox(update_frame, width=20, state="readonly")
+    designation_entry["values"] = ("Driver", "Manager", "Security")
+    designation_entry.current(1)
+    designation_entry.pack()
+
+    ttk.Label(update_frame, text="Phone:", font=font_1, background="orange").pack()
+    phone_entry = ttk.Entry(update_frame)
+    phone_entry.pack()
+
+    ttk.Label(update_frame, text="Address:", font=font_1, background="orange").pack()
+    address_entry = tk.Text(update_frame, height=5, width=20)
+    address_entry.pack()
+
+    def clear_form():
+
+        number_entry.delete(0, tk.END)
+        name_entry.delete(0, tk.END)
+        sex_var.set(None)
+        DOB_d.delete(0, tk.END)
+        DOB_m.delete(0, tk.END)
+        DOB_y.delete(0, tk.END)
+        DOJ_d.delete(0, tk.END)
+        DOJ_m.delete(0, tk.END)
+        DOJ_y.delete(0, tk.END)
+        designation_entry.delete(0, tk.END)
+        phone_entry.delete(0, tk.END)
+        address_entry.delete(0, tk.END)
+
+    def update_employee():
+
+        salary_dict = {
+            "Driver": 30000,
+            "Manager": 60000,
+            "Security": 25000
+        }
+        emp_number = number_entry.get()
+        emp_name = name_entry.get()
+        emp_sex = sex_var.get()
+        emp_dob = f"{DOB_d.get()}/{DOB_m.get()}/{DOB_y.get()}"
+        emp_doj = f"{DOJ_d.get()}/{DOJ_m.get()}/{DOJ_y.get()}"
+        emp_designation = designation_entry.get()
+        emp_basic_salary = salary_dict.get(emp_designation, 0)
+        emp_phone = phone_entry.get()
+        emp_address = address_entry.get("1.0", tk.END)
+
+        if not emp_number or not emp_name:
+            messagebox.showwarning("Input Error", "Please enter both Employee Number and Name.")
+            return
+
+        try:
+            conn = connect_db()
+            cursor = conn.cursor()
+            # Update the employee details in the database
+            cursor.execute(
+                "UPDATE employee_file SET sex = %s, Dob=%s, Doj=%s,designation=%s, basic_salary=%s, phone=%s, address=%s WHERE number = %s",
+                (emp_sex, emp_dob, emp_doj, emp_designation, emp_basic_salary, emp_phone, emp_address, emp_number))
+            cursor.execute(
+                "UPDATE employee_file SET sex = %s, Dob=%s, Doj=%s,designation=%s, basic_salary=%s, phone=%s, address=%s WHERE name = %s",
+                (emp_sex, emp_dob, emp_doj, emp_designation, emp_basic_salary, emp_phone, emp_address, emp_name))
+            conn.commit()
+            conn.close()
+            messagebox.showinfo("Success", "Employee details updated successfully.")
+        except Error as e:
+            messagebox.showerror("Database Error", str(e))
+
+    def back():
+        update_frame.destroy()
+        main()
+
+    update_button = Button(update_frame, text="Update", command=update_employee, font=font_1)
+    update_button.pack(pady=10)
+
+    clear_button = Button(update_frame, text="Clear", command=clear_form, font=font_1)
+    clear_button.pack()
+
+    back_button = Button(update_frame, text="Back", command=back, font=font_1)
+    back_button.pack(pady=10)
+
+def Emp_details():
+    style = ttk.Style()
+    style.configure("TNotebook", background="purple")
+
+    notebook = ttk.Notebook(root)
+    notebook.pack(fill="both",expand=True)
+
+    style = ttk.Style()
+    style.configure('TFrame', background='green')
+
+    frame_emp = ttk.Frame(notebook, height=500, width=700,padding=20,style="TFrame")
+    frame_emp.pack()
+    frame_salary_details = ttk.Frame(notebook, height=500, width=700,padding=20,style="TFrame")
+    frame_salary_details.pack()
+    frame_salary = ttk.Frame(notebook, height=500, width=700,padding=20,style="TFrame")
+    frame_salary.pack()
+
+    notebook.add(frame_emp, text="Employees Details")
+    notebook.add(frame_salary_details,text="Monthly Pay")
+    notebook.add(frame_salary, text="Salary Slip")
+
+    def back():
+        notebook.destroy()
+        main()
+
+    def display_employee_details():
+
+        tree = ttk.Treeview(frame_emp, columns=("ID", "Name","sex","dob","doj","Designation", "Salary"), show='headings')
+        tree.heading("ID", text="Employee.No")
+        tree.heading("Name", text="Name")
+        tree.heading("sex", text="Sex")
+        tree.heading("dob", text="DOB")
+        tree.heading("doj", text="DOJ")
+        tree.heading("Designation", text="Designation")
+        tree.heading("Salary", text="Basic Salary")
+        tree.pack()
+
+        tree.column("ID", width=100)
+        tree.column("Name", width=150)
+        tree.column("sex", width=50)
+        tree.column("dob", width=100)
+        tree.column("doj", width=100)
+        tree.column("Designation", width=150)
+        tree.column("Salary", width=100)
+
+        def show_all_employees():
+
+            for item in tree.get_children():
+                tree.delete(item)
+
+            try:
+                conn = connect_db()
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM employee_file")
+                employees = cursor.fetchall()
+
+                for employee in employees:
+                    tree.insert("", "end", values=employee)
+
+                conn.close()
+            except Error as e:
+                messagebox.showerror("Database Error", str(e))
+
+        btn_show_all = ttk.Button(frame_emp, text="Back", command=back)
+        btn_show_all.pack(pady=10)
+
+        show_all_employees()
+
+
+    display_employee_details()
+
+    def salary_details():
+        tree = ttk.Treeview(frame_salary_details, columns=("ID", "Name", "Designation", "Salary","Gross","Deduction","Net"),
+                            show='headings')
+        tree.heading("ID", text="Employee.No")
+        tree.heading("Name", text="Name")
+        tree.heading("Designation", text="Designation")
+        tree.heading("Salary", text="Basic Salary")
+        tree.heading("Gross", text="Gross")
+        tree.heading("Deduction", text="Deduction")
+        tree.heading("Net", text="Net")
+
+        tree.pack()
+
+        tree.column("ID", width=100)
+        tree.column("Name", width=120)
+        tree.column("Designation", width=100)
+        tree.column("Gross", width=100)
+        tree.column("Deduction", width=100)
+        tree.column("Net", width=100)
+
+        def show_all_employees():
+
+            for item in tree.get_children():
+                tree.delete(item)
+
+            try:
+                conn = connect_db()
+                cursor = conn.cursor()
+                query = """
+                                SELECT e.number, e.name, designation, mp.basic_salary_e , mp.gross, mp.deduction, mp.net
+                                FROM employee_file e
+                                JOIN monthly_pay_file mp ON e.number = mp.number
+                            """
+                cursor.execute(query)
+                employees = cursor.fetchall()
+
+                for employee in employees:
+                    tree.insert("", "end", values=employee)
+
+                conn.close()
+            except Error as e:
+                messagebox.showerror("Database Error", str(e))
+
+        show_all_employees()
+    salary_details()
+
+    def calculate_salary(employee_number, days_worked):
+        try:
+            conn = connect_db()
+            cursor = conn.cursor()
+
+            cursor.execute("SELECT name, basic_salary FROM employee_file WHERE number = %s", (employee_number,))
+            result = cursor.fetchone()
+
+            if result:
+                name, basic_salary = result
+                max_days_in_month = 30
+                actual_basic = (basic_salary * days_worked) / max_days_in_month
+                da = actual_basic * 0.55
+                hra = actual_basic * 0.35
+                conveyance = actual_basic * 0.15
+
+                gross = actual_basic + da + hra + conveyance
+                deductions = (basic_salary*5)/100
+                net = gross - deductions
+
+                cursor.execute(
+                    "INSERT INTO monthly_pay_file (number, name, no_of_days, basic_salary_e, deduction, DA, HRA, conveyence, gross, net) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                    (employee_number, name, days_worked, actual_basic, deductions, da, hra, conveyance, gross, net))
+                conn.commit()
+                messagebox.showinfo("Success", "Salary calculated and stored successfully.")
+            else:
+                messagebox.showwarning("Not Found", "Employee not found.")
+
+        except Error as e:
+            messagebox.showerror("Database Error", str(e))
+
+
+    def salary_input():
+
+        newl11 = Label(frame_salary_details,text="Calculate the Salary",font=font_3,bg="green")
+        newl11.pack()
+        newl1 = Label(frame_salary_details, text="Employee Number:", font=font_1,bg="green")
+        newl1.pack()
+        employee_num = ttk.Entry(frame_salary_details)
+        employee_num.pack()
+
+        newl = Label(frame_salary_details, text="No.of days worked:", font=font_1,bg="green")
+        newl.pack()
+        days_work = ttk.Entry(frame_salary_details)
+        days_work.pack()
+
+        def go():
+
+            try:
+                employee_number = employee_num.get()
+                days_worked = int(days_work.get())
+                calculate_salary(employee_number, days_worked)
+            except ValueError:
+                messagebox.showwarning("Input Error", "Please enter a valid number of days worked.")
+
+        go_salary = Button(frame_salary_details, text="Go", font=font_1, command=go)
+        go_salary.pack()
+
+        btn_back = ttk.Button(frame_salary_details, text="Back", command=back)
+        btn_back.pack(pady=10)
+
+    salary_input()
+
+    def fetch_employee_details(emp_number):
+        try:
+            conn = connect_db()
+            cursor = conn.cursor()
+
+            cursor.execute("SELECT * FROM monthly_pay_file WHERE number = %s", (emp_number,))
+            employee = cursor.fetchone()
+
+            conn.close()
+
+            return employee
+
+        except Error as e:
+            print(f"Database error: {e}")
+            return None
+
+    def salary_slip():
+
+        emp_number = search_emp.get()
+
+        employee = fetch_employee_details(emp_number)
+
+        if employee:
+
+            labnew = Label(frame_salary, text="Employee Salary Slip", font=("times", 15, "bold"), fg="white", bg="#2c3e80", padx=10,
+                           pady=10)
+            labnew.pack()
+
+            details = (
+                f"Number: {employee[0]}                Name: {employee[1]}\nBasic: {employee[3]}                Deduction: {employee[6]}\nDA: {employee[5]}\nHRA: {employee[6]}\nConveyance: {employee[7]}"
+                f"\nGross: {employee[8]}                Net: {employee[9]}")
+            lab_details = Label(frame_salary, text=details, font=("times", 12, "bold"), fg="black", bg="lightblue", padx=10,
+                                pady=10)
+            lab_details.pack()
+
+        else:
+
+            messagebox.showerror("Error", "Employee not found!")
+
+    ttk.Label(frame_salary, text="Employee.No:", font=font_1,background="green").pack()
+    search_emp = ttk.Entry(frame_salary)
+    search_emp.pack()
+    submit_search = Button(frame_salary, text="Search", font=font_1, command=salary_slip)
+    submit_search.pack()
+    btn_back = ttk.Button(frame_salary, text="Back", command=back)
+    btn_back.pack(pady=10)
+
+main() 
